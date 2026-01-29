@@ -1,4 +1,4 @@
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useRef } from 'react'
 import type { Editor } from '@tiptap/react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,20 +22,35 @@ import {
   MinusIcon,
   LinkIcon,
   CodeSquareIcon,
-  Undo2Icon,
-  Redo2Icon,
+  ChevronLeftIcon,
+  ChevronRightIcon,
   ExternalLinkIcon,
   Trash2Icon,
+  ImageIcon,
 } from 'lucide-react'
 
 interface EditorToolbarProps {
   editor: Editor | null
   onSelectionHighlight?: (range: { from: number; to: number } | null) => void
+  onImageUpload?: (file: File) => Promise<void> | void
+  onNavigateBack?: () => void
+  onNavigateForward?: () => void
+  canNavigateBack?: boolean
+  canNavigateForward?: boolean
 }
 
-export function EditorToolbar({ editor, onSelectionHighlight }: EditorToolbarProps) {
+export function EditorToolbar({
+  editor,
+  onSelectionHighlight,
+  onImageUpload,
+  onNavigateBack,
+  onNavigateForward,
+  canNavigateBack,
+  canNavigateForward,
+}: EditorToolbarProps) {
   const [linkUrl, setLinkUrl] = useState('')
   const [isLinkPopoverOpen, setIsLinkPopoverOpen] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const openLinkPopover = useCallback(() => {
     if (!editor) return
@@ -79,30 +94,47 @@ export function EditorToolbar({ editor, onSelectionHighlight }: EditorToolbarPro
     closeLinkPopover()
   }, [editor, closeLinkPopover])
 
+  const handleImageUpload = useCallback(async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0]
+    if (!file || !onImageUpload) return
+
+    // Reset file input immediately
+    if (fileInputRef.current) {
+      fileInputRef.current.value = ''
+    }
+
+    // Call the upload handler (which handles placeholder insertion)
+    try {
+      await onImageUpload(file)
+    } catch (error) {
+      console.error('Failed to upload image:', error)
+    }
+  }, [onImageUpload])
+
   if (!editor) return null
 
   const isLinkActive = editor.isActive('link')
 
   return (
     <div className="editor-toolbar">
-      {/* Undo / Redo */}
+      {/* Back / Forward Navigation */}
       <Button
         variant="ghost"
         size="icon-sm"
-        onClick={() => editor.chain().focus().undo().run()}
-        disabled={!editor.can().undo()}
-        title="Undo (Ctrl+Z)"
+        onClick={onNavigateBack}
+        disabled={!canNavigateBack}
+        title="Go back"
       >
-        <Undo2Icon className="size-4" />
+        <ChevronLeftIcon className="size-4" />
       </Button>
       <Button
         variant="ghost"
         size="icon-sm"
-        onClick={() => editor.chain().focus().redo().run()}
-        disabled={!editor.can().redo()}
-        title="Redo (Ctrl+Shift+Z)"
+        onClick={onNavigateForward}
+        disabled={!canNavigateForward}
+        title="Go forward"
       >
-        <Redo2Icon className="size-4" />
+        <ChevronRightIcon className="size-4" />
       </Button>
 
       <div className="separator" />
@@ -320,6 +352,27 @@ export function EditorToolbar({ editor, onSelectionHighlight }: EditorToolbarPro
           </div>
         </PopoverContent>
       </Popover>
+
+      {/* Image upload */}
+      {onImageUpload && (
+        <>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*"
+            onChange={handleImageUpload}
+            className="hidden"
+          />
+          <Button
+            variant="ghost"
+            size="icon-sm"
+            onClick={() => fileInputRef.current?.click()}
+            title="Insert Image"
+          >
+            <ImageIcon className="size-4" />
+          </Button>
+        </>
+      )}
     </div>
   )
 }
