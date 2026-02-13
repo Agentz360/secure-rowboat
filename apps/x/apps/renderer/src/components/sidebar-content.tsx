@@ -8,9 +8,7 @@ import {
   ChevronsDownUp,
   ChevronsUpDown,
   Copy,
-  File,
   FilePlus,
-  Folder,
   FolderPlus,
   HelpCircle,
   Mic,
@@ -157,6 +155,25 @@ function formatEventTime(ts: string): string {
   const date = new Date(ts)
   if (Number.isNaN(date.getTime())) return ""
   return date.toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })
+}
+
+function formatRunTime(ts: string): string {
+  const date = new Date(ts)
+  if (Number.isNaN(date.getTime())) return ""
+  const now = Date.now()
+  const diffMs = Math.max(0, now - date.getTime())
+  const diffMinutes = Math.floor(diffMs / (1000 * 60))
+  const diffHours = Math.floor(diffMinutes / 60)
+  const diffDays = Math.floor(diffHours / 24)
+  const diffWeeks = Math.floor(diffDays / 7)
+  const diffMonths = Math.floor(diffDays / 30)
+
+  if (diffMinutes < 1) return "just now"
+  if (diffMinutes < 60) return `${diffMinutes} m`
+  if (diffHours < 24) return `${diffHours} h`
+  if (diffDays < 7) return `${diffDays} d`
+  if (diffWeeks < 4) return `${diffWeeks} w`
+  return `${Math.max(1, diffMonths)} m`
 }
 
 function SyncStatusBar() {
@@ -867,8 +884,7 @@ function Tree({
   if (isRenaming) {
     return (
       <SidebarMenuItem>
-        <div className="flex items-center gap-2 px-2 py-1">
-          {isDir ? <Folder className="size-4 shrink-0" /> : <File className="size-4 shrink-0" />}
+        <div className="flex items-center px-2 py-1">
           <Input
             value={newName}
             onChange={(e) => setNewName(e.target.value)}
@@ -905,7 +921,6 @@ function Tree({
               isActive={isSelected}
               onClick={() => onSelect(item.path, item.kind)}
             >
-              <File className="size-4" />
               <span>{item.name}</span>
             </SidebarMenuButton>
           </SidebarMenuItem>
@@ -927,7 +942,6 @@ function Tree({
             <CollapsibleTrigger asChild>
               <SidebarMenuButton>
                 <ChevronRight className="transition-transform size-4" />
-                <Folder className="size-4" />
                 <span>{item.name}</span>
               </SidebarMenuButton>
             </CollapsibleTrigger>
@@ -1045,11 +1059,16 @@ function TasksSection({
                     isActive={currentRunId === run.id}
                     onClick={() => actions?.onSelectRun(run.id)}
                   >
-                    <div className="flex items-center gap-2">
+                    <div className="flex w-full items-center gap-2 min-w-0">
                       {processingRunIds?.has(run.id) ? (
                         <span className="size-2 shrink-0 rounded-full bg-emerald-500 animate-pulse" />
                       ) : null}
-                      <span className="truncate text-sm">{run.title || '(Untitled chat)'}</span>
+                      <span className="min-w-0 flex-1 truncate text-sm">{run.title || '(Untitled chat)'}</span>
+                      {run.createdAt ? (
+                        <span className="shrink-0 text-[10px] text-muted-foreground">
+                          {formatRunTime(run.createdAt)}
+                        </span>
+                      ) : null}
                     </div>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
